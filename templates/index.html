@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cryptocurrency Prices</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a69ac 100%);
+            background-attachment: fixed;
+        }
+    </style>
+</head>
+<body class="text-gray-900">
+    <div class="container mx-auto p-6 md:p-8">
+        <h1 class="text-4xl md:text-5xl font-bold text-center mb-6 text-white">Cryptocurrency Prices</h1>
+        <div class="bg-white rounded-lg shadow-lg p-4 md:p-6 relative">
+            <input type="text" id="currency-input" placeholder="Enter currency name or symbol (e.g., bitcoin or BTC)" class="p-3 w-full rounded-lg border-2 border-gray-300 focus:outline-none focus:border-blue-500 mb-4" />
+            <div id="suggestions" class="absolute z-10 bg-white rounded-lg shadow-lg mt-1 hidden"></div>
+            <button id="fetch-button" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition duration-200 w-full">Get Price</button>
+        </div>
+
+        <div id="price-output" class="mt-6 text-center"></div>
+
+        <footer class="mt-12 text-center">
+            <p class="text-sm text-white">Developed by Ahmed Kettaf</p>
+        </footer>
+    </div>
+
+    <script>
+        document.getElementById('currency-input').addEventListener('input', showSuggestions);
+        document.getElementById('fetch-button').addEventListener('click', fetchPrices);
+
+        function showSuggestions() {
+            const input = document.getElementById('currency-input').value.trim().toLowerCase();
+            const suggestionsDiv = document.getElementById('suggestions');
+            suggestionsDiv.innerHTML = '';
+
+            if (input === '') {
+                suggestionsDiv.classList.add('hidden');
+                return;
+            }
+
+            // جلب العملات من API
+            fetch(`https://api.coingecko.com/api/v3/coins/list`)
+                .then(response => response.json())
+                .then(data => {
+                    const suggestions = data.filter(currency => 
+                        currency.name.toLowerCase().includes(input) || currency.symbol.toLowerCase().includes(input)
+                    );
+
+                    if (suggestions.length === 0) {
+                        suggestionsDiv.classList.add('hidden');
+                        return;
+                    }
+
+                    suggestions.forEach(currency => {
+                        const suggestionItem = document.createElement('div');
+                        suggestionItem.textContent = `${currency.name} (${currency.symbol.toUpperCase()})`;
+                        suggestionItem.classList.add('p-2', 'hover:bg-gray-200', 'cursor-pointer');
+                        suggestionItem.onclick = () => selectSuggestion(currency);
+                        suggestionsDiv.appendChild(suggestionItem);
+                    });
+
+                    suggestionsDiv.classList.remove('hidden');
+                })
+                .catch(error => {
+                    console.error('Error fetching currencies:', error);
+                });
+        }
+
+        function selectSuggestion(currency) {
+            document.getElementById('currency-input').value = currency.id; // استخدم currency.symbol إذا كنت تفضل
+            document.getElementById('suggestions').classList.add('hidden');
+        }
+
+        function fetchPrices() {
+            const currencyId = document.getElementById('currency-input').value.trim().toLowerCase();
+            fetch(`/api/prices?id=${currencyId}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Currency not found');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    const price = data[currencyId].usd;
+                    displayPrice(currencyId, price);
+                })
+                .catch(error => {
+                    displayError(error.message);
+                });
+        }
+
+        function displayPrice(currencyId, price) {
+            const priceOutput = document.getElementById('price-output');
+            priceOutput.classList.remove('hidden');
+            priceOutput.classList.add('fade-in');
+            priceOutput.innerHTML = `
+                <div class="bg-white p-4 rounded-lg shadow-md transition transform hover:scale-105">
+                    <h2 class="text-2xl md:text-3xl font-semibold mt-4">Price of <span class="text-blue-600">${currencyId}</span></h2>
+                    <h3 class="text-xl md:text-2xl text-green-600">$${price}</h3>
+                </div>
+            `;
+        }
+
+        function displayError(message) {
+            const priceOutput = document.getElementById('price-output');
+            priceOutput.classList.remove('hidden');
+            priceOutput.classList.add('fade-in');
+            priceOutput.innerHTML = `<div class="bg-red-100 text-red-800 p-4 rounded-lg shadow-md">${message}</div>`;
+        }
+    </script>
+
+    <style>
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+    </style>
+</body>
+</html>
+
+
